@@ -1,17 +1,13 @@
-# ==============================================================================
-# COMANDOS DE FAKER USADOS (10 Providers Ajustados para el Negocio de Seguridad):
-# ==============================================================================
-# 1. name()                   # Provider: person
-# 2. email()                  # Provider: internet
-# 3. phone_number()           # Provider: phone_number
-# 4. address()                # Provider: address
-# 5. date_time_this_year()    # Provider: date_time
-# 6. city()                   # Provider: address
-# 7. random_int()             # Provider: random
-# 8. coordinate()             # Provider: geo
-# 9. sentence()               # Provider: lorem
-# 10. pydecimal()             # Provider: python
-# ==============================================================================
+# 1. name()   nombre ramdom
+# 2. email()  email inventado
+# 3. phone_number() numero de telefono
+# 4. address() dirección
+# 5. date_time_this_year()  generador de fecha
+# 6. city()  Ciudad aleatoria
+# 7. random_int()    numero entero aleatorio
+# 8. coordinate()    coordenadas en el mapa
+# 9. sentence()     frase de relleno
+# 10. pydecimal()   para generar numeros decimales
 
 import mysql.connector
 import psycopg2
@@ -19,9 +15,8 @@ from faker import Faker
 import random
 from datetime import datetime
 
-# --- CONFIGURACIÓN GLOBAL Y ESTRUCTURA ---
 fake = Faker('es_ES')
-NUM_REGISTROS_BASE = 15 # Cantidad base de registros a añadir
+NUM_REGISTROS_BASE = 15 
 
 DB_CREDS = {
     "host": "localhost",
@@ -36,7 +31,6 @@ DB_CONFIGS = {
     "MariaDB":    {"port": 3308, "driver": "mysql"},
 }
 
-# --- FUNCIONES DE UTILIDAD ---
 
 def get_db_connection(config):
     """Establece la conexión a la base de datos."""
@@ -58,13 +52,13 @@ def fetch_ids(cursor, table):
 def insert_usuario_zona(cursor, conn):
     """Inserta datos en tablas raíz: Usuario y Zona."""
     
-    # 1. Tabla Usuario (Residentes, gobierno local, organizaciones comunitarias)
+    # 1 Tabla Usuario
     sql_user = "INSERT INTO Usuario (nombre, correo, telefono, direccion, fechaDeRegistro) VALUES (%s, %s, %s, %s, %s)"
     data_users = [(fake.name(), fake.email(), fake.phone_number(), fake.address(), fake.date_time_this_year()) for _ in range(NUM_REGISTROS_BASE * 2)]
     cursor.executemany(sql_user, data_users)
     print("    - Usuarios insertados.")
 
-    # 2. Tabla Zona (Áreas clave para la seguridad)
+    # 2 Tabla Zona 
     sql_zona = "INSERT INTO Zona (nombre, categoria, coordenadas, numeroIncidencias) VALUES (%s, %s, %s, %s)"
     categorias = ['Zona Céntrica', 'Barrio Residencial', 'Área Industrial', 'Zona de Conflicto']
     data_zonas = [(fake.city(), random.choice(categorias), fake.coordinate(), fake.random_int(0, 100)) for _ in range(NUM_REGISTROS_BASE)]
@@ -77,7 +71,7 @@ def insert_usuario_zona(cursor, conn):
 def insert_reporte_sensor(cursor, conn, usuario_ids, zona_ids):
     """Inserta Reporte (depende de Usuario, Zona) y Sensor (depende de Zona)."""
     
-    # 3. Tabla Reporte (Reportes de residentes)
+    # 3 Tabla Reporte
     sql_reporte = "INSERT INTO Reporte (id_usuario, id_zona, tipoIncidencia, descripcion, fechaHora, estado, prioridad, medioReporte) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
     incidentes = ['Robo con violencia', 'Conflicto vecinal', 'Vandalismo', 'Sospecha de actividad']
     estados = ['Nuevo', 'En análisis', 'Escalado a policía', 'Cerrado']
@@ -97,13 +91,12 @@ def insert_reporte_sensor(cursor, conn, usuario_ids, zona_ids):
     cursor.executemany(sql_reporte, data_reportes)
     print("    - Reportes insertados.")
 
-    # 4. Tabla Sensor (Hardware de monitoreo de entorno/comunidad)
+    # 4 Tabla Sensor
     sql_sensor = "INSERT INTO Sensor (id_zona, tipo, modelo, estado, fechaInstalacion) VALUES (%s, %s, %s, %s, %s)"
     tipos_sensor = ['Ruido Ambiental', 'Flujo Peatonal', 'Calidad Aire', 'Cámara CCTV']
     
     data_sensores = []
     for _ in range(NUM_REGISTROS_BASE):
-        # CORRECCIÓN DE CÓDIGO: Usamos random_int para el modelo.
         modelo_str = f"MOD-{fake.random_int(min=100, max=999)}"
 
         data_sensores.append((
@@ -122,26 +115,26 @@ def insert_reporte_sensor(cursor, conn, usuario_ids, zona_ids):
 def insert_registro_comentario_multimedia_alerta(cursor, conn, usuario_ids, reporte_ids, sensor_ids):
     """Inserta tablas que dependen de Reporte o Sensor."""
 
-    # 5. Tabla RegistroSensor (Datos capturados por el hardware)
+    # 5 Tabla RegistroSensor
     sql_registro = "INSERT INTO RegistroSensor (id_sensor, valor, unidad) VALUES (%s, %s, %s)"
     data_registros = [(random.choice(sensor_ids), fake.pydecimal(3, 2, 40, 95), 'dB' if random.random() > 0.5 else 'PPM') for _ in range(NUM_REGISTROS_BASE * 4)]
     cursor.executemany(sql_registro, data_registros)
     print("    - Registros de Sensor insertados.")
     
-    # 6. Tabla Comentario (Feedback o expansión de información)
+    # 6 Tabla Comentario
     sql_comentario = "INSERT INTO Comentario (id_usuario, id_reporte, texto) VALUES (%s, %s, %s)"
     data_comentarios = [(random.choice(usuario_ids), random.choice(reporte_ids), fake.sentence(nb_words=8)) for _ in range(NUM_REGISTROS_BASE * 2)]
     cursor.executemany(sql_comentario, data_comentarios)
     print("    - Comentarios insertados.")
     
-    # 7. Tabla Multimedia (Evidencia visual)
+    # 7 Tabla Multimedia
     sql_multimedia = "INSERT INTO Multimedia (id_reporte, tipoArchivo, rutaArchivo) VALUES (%s, %s, %s)"
     tipos_archivo = ['imagen/jpeg', 'video/mp4']
     data_multimedia = [(random.choice(reporte_ids), fake.random_element(elements=tipos_archivo), f"/evidencia/{fake.uuid4()}") for _ in range(NUM_REGISTROS_BASE)]
     cursor.executemany(sql_multimedia, data_multimedia)
     print("    - Multimedia insertada.")
 
-    # 8. Tabla Alerta (Generación de alertas automáticas/manuales)
+    # 8 Tabla Alerta
     sql_alerta = "INSERT INTO Alerta (id_reporte, tipo, mensaje) VALUES (%s, %s, %s)"
     tipos_alerta = ['Umbral de Ruido Superado', 'Patrón de Concurrencia Anormal', 'Alerta de Vandalismo']
     data_alertas = [(random.choice(reporte_ids), random.choice(tipos_alerta), fake.sentence(nb_words=10)) for _ in range(NUM_REGISTROS_BASE)]
@@ -154,7 +147,7 @@ def insert_registro_comentario_multimedia_alerta(cursor, conn, usuario_ids, repo
 def insert_indicador_informe(cursor, conn, zona_ids, registro_ids):
     """Inserta Indicador (Análisis) y Informe (Decisiones)."""
     
-    # 9. Tabla Indicador (Métricas de riesgo y bienestar)
+    # 9 Tabla Indicador
     sql_indicador = "INSERT INTO Indicador (id_zona, id_registro_sensor, nombre, valor, descripcion) VALUES (%s, %s, %s, %s, %s)"
     
     cursor.execute("SELECT R.id, S.id_zona FROM RegistroSensor R INNER JOIN Sensor S ON R.id_sensor = S.id")
@@ -166,7 +159,7 @@ def insert_indicador_informe(cursor, conn, zona_ids, registro_ids):
     conn.commit()
     print("    - Indicadores insertados.")
     
-    # 10. Tabla Informe (Documentos para la toma de decisiones)
+    # 10 Tabla Informe
     indicador_ids = fetch_ids(cursor, 'Indicador')
     sql_informe = "INSERT INTO Informe (id_indicador, titulo, descripcion, tipo, fuentes) VALUES (%s, %s, %s, %s, %s)"
     tipos_informe = ['Análisis de Riesgo', 'Recomendaciones Operativas', 'Resumen Mensual de Seguridad']
@@ -208,14 +201,14 @@ def main():
             insert_registro_comentario_multimedia_alerta(cursor, conn, usuario_ids, reporte_ids, sensor_ids)
             registro_ids = fetch_ids(cursor, 'RegistroSensor')
 
-            # 4. Insertar entidades de análisis final
+            # 4. Insertar entidades de análisis final (mondongo)
             insert_indicador_informe(cursor, conn, zona_ids, registro_ids)
             
             conn.close()
-            print(f"✅ Relleno de {db_name} completado y conexión cerrada.")
+            print(f"Relleno de {db_name} completado y conexión cerrada.")
             
         except Exception as e:
-            print(f"❌ ERROR CRÍTICO al conectar o rellenar {db_name} (Puerto {config['port']}):")
+            print(f"ERROR CRÍTICO al conectar o rellenar {db_name} (Puerto {config['port']}):")
             print(f"Asegúrate de que el contenedor de {db_name} esté corriendo en el puerto {config['port']} y que la base de datos esté inicializada.")
             print(f"Detalle del error: {e}")
         finally:
