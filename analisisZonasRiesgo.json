@@ -1,0 +1,31 @@
+{
+    "fecha_generacion": "2025-10-22T18:24:08.276758",
+    "descripcion": "Las 5 zonas con mayor cantidad de incidentes reportados con prioridad Crítica o Alta. Usado para la asignación de patrullaje y recursos de emergencia.",
+    "top_zonas": [
+        {
+            "zona": "Barcelona",
+            "incidentes_criticos": 3,
+            "coordenadas": "-143.213799"
+        },
+        {
+            "zona": "Lleida",
+            "incidentes_criticos": 3,
+            "coordenadas": "76.928556"
+        },
+        {
+            "zona": "Granada",
+            "incidentes_criticos": 3,
+            "coordenadas": "77.730081"
+        },
+        {
+            "zona": "Ourense",
+            "incidentes_criticos": 3,
+            "coordenadas": "-21.584839"
+        },
+        {
+            "zona": "Pontevedra",
+            "incidentes_criticos": 2,
+            "coordenadas": "-26.850475"
+        }
+    ]
+}

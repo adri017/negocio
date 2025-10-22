@@ -126,24 +126,23 @@ def analizar_mariadb(conn):
     # 3. Une con Reporte y Alerta usando la condición de la misma Zona.
     # 4. Aplica la condición temporal.
     sql = """
-    SELECT
+        SELECT
         Z.nombre AS zona,
         S.tipo AS tipo_sensor,
         COUNT(DISTINCT R.id) AS reportes_ciudadanos_cercanos
-    FROM RegistroSensor RS                         -- Inicia con el registro de datos
-    JOIN Sensor S ON RS.id_sensor = S.id           -- Une con el sensor
-    JOIN Zona Z ON S.id_zona = Z.id                -- Une con la zona del sensor
-    JOIN Reporte R ON R.id_zona = Z.id             -- Une con reportes en la misma zona
-    JOIN Alerta A ON A.id_reporte = R.id           -- Filtra solo reportes que generaron una Alerta (opcional, pero útil)
-    WHERE 
-        -- Condición de Correlación Temporal: 
-        -- La fecha del Reporte (R.fechaHora) debe estar dentro de ± 1 hora del Registro del Sensor (RS.fecha)
-        R.fechaHora BETWEEN DATE_SUB(RS.fecha, INTERVAL 1 HOUR) AND DATE_ADD(RS.fecha, INTERVAL 1 HOUR)
-    GROUP BY Z.nombre, S.tipo
-    HAVING COUNT(R.id) > 0
-    ORDER BY reportes_ciudadanos_cercanos DESC
-    LIMIT 5;
-    """
+        FROM RegistroSensor RS
+        JOIN Sensor S ON RS.id_sensor = S.id
+        JOIN Zona Z ON S.id_zona = Z.id
+        JOIN Reporte R ON R.id_zona = Z.id
+        JOIN Alerta A ON A.id_reporte = R.id
+        WHERE
+            -- Corregido: R.fechaHora está entre 2 días antes y la hora del registro del sensor (RS.fecha)
+            R.fechaHora BETWEEN DATE_SUB(RS.fecha, INTERVAL 2 DAY) AND RS.fecha
+        GROUP BY Z.nombre, S.tipo
+        HAVING COUNT(R.id) > 0
+        ORDER BY reportes_ciudadanos_cercanos DESC
+        LIMIT 5;
+        """
     cursor = conn.cursor()
     cursor.execute(sql)
     
@@ -161,6 +160,59 @@ def analizar_mariadb(conn):
         "descripcion": "Mide el número de reportes ciudadanos en zonas donde la fecha del reporte coincide con la de un registro de sensor ± 1 hora. Esto valida la correlación entre la percepción del ciudadano y los datos tecnológicos.",
         "top_correlaciones_sensor_reporte": resultados
     }
+
+def funcionConjunta():
+    sql="""
+        SELECT
+            Z.nombre AS zona,
+            COUNT(R.id) AS total_reportes_abiertos,
+            MAX(R.tipoIncidencia) AS tipo_incidencia_mas_reciente
+        FROM Zona Z
+        JOIN Reporte R ON Z.id = R.id_zona
+        WHERE
+            -- Definimos cuáles son los estados "abiertos" o "pendientes"
+            R.estado IN ('Abierto', 'En Proceso', 'Pendiente')
+        GROUP BY
+            Z.nombre
+        HAVING
+            COUNT(R.id) > 0
+        ORDER BY
+            total_reportes_abiertos DESC,
+            Z.nombre ASC
+        LIMIT 5;
+        """
+    dbNames = ["PostgreSQL", "MySQL", "MariaDB"]
+    resultado = []
+
+    for db in dbNames:
+        conn = None
+        try:
+            config = DB_CONFIGS[db]
+            conn = get_db_connection(config)
+
+            cursor = conn.cursor()
+
+            cursor.execute(sql)
+        
+            for row in cursor.fetchall():
+                resultado.append({
+                    "zona": row[0],
+                    "total_reportes_abiertos": row[1],
+                    "tipo_incidencia_mas_reciente": row[2]
+                })
+                print(resultado)
+            cursor.close()
+        except Exception as e:
+            print(f"ERROR al procesar {db}:")
+            print(f"Detalle: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+    return resultado
+
+
+    
 
 # --- FUNCIÓN PRINCIPAL ---
 
@@ -194,6 +246,9 @@ def main():
         finally:
             if conn:
                 conn.close()
+
+    resultado = funcionConjunta()
+    print(resultado)
 
 if __name__ == "__main__":
     main()

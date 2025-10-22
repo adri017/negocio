@@ -1,0 +1,11 @@
+{
+    "fecha_generacion": "2025-10-22T18:24:08.284176",
+    "descripcion": "Mide el número de reportes ciudadanos en zonas donde la fecha del reporte coincide con la de un registro de sensor ± 1 hora. Esto valida la correlación entre la percepción del ciudadano y los datos tecnológicos.",
+    "top_correlaciones_sensor_reporte": [
+        {
+            "zona": "Almería",
+            "sensor": "Cámara CCTV",
+            "reportes_ciudadanos_afectados": 1
+        }
+    ]
+}
