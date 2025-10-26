@@ -163,23 +163,18 @@ def analizar_mariadb(conn):
 
 def funcionConjunta():
     sql="""
-        SELECT
-            Z.nombre AS zona,
-            COUNT(R.id) AS total_reportes_abiertos,
-            MAX(R.tipoIncidencia) AS tipo_incidencia_mas_reciente
+       SELECT
+            Z.nombre AS zona_mas_critica,
+            COUNT(R.id) AS reportes_alta_prioridad_total
         FROM Zona Z
         JOIN Reporte R ON Z.id = R.id_zona
         WHERE
-            -- Definimos cuáles son los estados "abiertos" o "pendientes"
-            R.estado IN ('Abierto', 'En Proceso', 'Pendiente')
+            R.prioridad = 'Alta'
         GROUP BY
             Z.nombre
-        HAVING
-            COUNT(R.id) > 0
         ORDER BY
-            total_reportes_abiertos DESC,
-            Z.nombre ASC
-        LIMIT 5;
+            reportes_alta_prioridad_total DESC
+        LIMIT 1;
         """
     dbNames = ["PostgreSQL", "MySQL", "MariaDB"]
     resultado = []
@@ -196,11 +191,9 @@ def funcionConjunta():
         
             for row in cursor.fetchall():
                 resultado.append({
-                    "zona": row[0],
-                    "total_reportes_abiertos": row[1],
-                    "tipo_incidencia_mas_reciente": row[2]
+                    "zona_mas_critica": row[0],
+                    "reportes_alta_prioridad_total": row[1],
                 })
-                print(resultado)
             cursor.close()
         except Exception as e:
             print(f"ERROR al procesar {db}:")
@@ -247,8 +240,8 @@ def main():
             if conn:
                 conn.close()
 
-    resultado = funcionConjunta()
-    print(resultado)
+    with open("datosDeLasTresBases", 'w' ,encoding='utf-8') as f:
+        json.dump(funcionConjunta(),f,ensure_ascii=False, indent=4)
 
 if __name__ == "__main__":
     main()
